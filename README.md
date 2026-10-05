@@ -15,36 +15,39 @@
 
 ---
 
-<div align="center">
+<table>
+<tr>
+<td width="50%" valign="top" align="center">
 
 <a href="https://giphy.com/explore/maa-saraswati">
-<img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExeXVncHVvZ3g4YXVwamZjczF5bzZiaDB5bDA0NnN4czczbjVqc2FkMCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/DhYm5P7QS0VFe/200w.gif" alt="Animated Saraswati devotional art" width="680"/>
+<img src="https://media.giphy.com/media/6Yz1lscdFlHt6/giphy.gif" alt="Animated Saraswati playing the veena" width="420"/>
 </a>
 
-### 🪷 सरस्वती · The Veena · Knowledge in Motion
+<sub>सरस्वती — ज्ञान, वाणी और संगीत की अधिष्ठात्री</sub>
 
-<em>Let the veena tune the mind before the work begins.</em>
+</td>
+<td width="50%" valign="top" align="center">
 
-<br/>
+<img src="./assets/udyama-surge.svg" alt="Animated upward surge of awareness" width="420"/>
+
+<sub>उद्यम — awareness rising into Bhairava</sub>
+
+</td>
+</tr>
+</table>
+
+<div align="center">
 
 ## **उद्यमो भैरवः ॥ १.५ ॥**
 ### *udyamo bhairavaḥ*
 
 > **The upward surge of awareness is Bhairava.**
 
-<a href="https://giphy.com/gifs/ExtremeImprov-flame-flames-flamed-slu282qyK4KdwDGQJc">
-<img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExcGttMjdsZWdnZm0xMm90bjRmZ2ZpYTExam1tbjBnZmI1b3I1MnN0YSZlcD12MV9pbnRlcm5uYWxfZ2lmX2J5X2lkJmN0PVo/slu282qyK4KdwDGQJc/giphy.gif" alt="Animated rising flame representing the upward surge of awareness" width="520"/>
-</a>
-
-<sub>🔥 A rising flame — attention gathering, awareness ascending, Bhairava revealed.</sub>
-
 </div>
 
-In the first awakening of the **Śiva Sūtras**, *udyama* is more than ordinary effort. It points toward a **sudden rising, flash, or upsurge of consciousness**—the living movement by which awareness recognizes its own depth.
+In the first awakening of the **Śiva Sūtras**, *udyama* is more than ordinary effort. It points toward a **sudden rising, flash, or upsurge of consciousness**—the living movement by which awareness recognizes its own depth. The visual language of Udyama follows that idea: **Saraswati for knowledge and music; the rising flame for awakened awareness.**
 
-The visual language here is deliberate: **Saraswati with the veena** evokes knowledge, music, speech, and refinement; the **rising flame** evokes the living upward surge of awareness described by *udyama*.
-
-[Read the Sanskrit text of the Śiva Sūtras](https://sa.wikisource.org/wiki/शिवसूत्र) · [Saraswati GIF source](https://giphy.com/explore/maa-saraswati) · [Flame GIF source](https://giphy.com/gifs/ExtremeImprov-flame-flames-flamed-slu282qyK4KdwDGQJc)
+[Read the Sanskrit text of the Śiva Sūtras](https://sa.wikisource.org/wiki/शिवसूत्र) · [Saraswati animation source](https://giphy.com/explore/maa-saraswati)
 
 ---
 
