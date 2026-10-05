@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Entity Validations
+    function isValidUserProfile(data) {
+      return data.userId == request.auth.uid &&
+             data.email is string && data.email.size() <= 256 &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+             (!('targetRole' in data) || (data.targetRole is string && data.targetRole.size() <= 64)) &&
+             (!('weeklyHoursGoal' in data) || (data.weeklyHoursGoal is number && data.weeklyHoursGoal >= 0 && data.weeklyHoursGoal <= 168)) &&
+             (!('currentStreak' in data) || (data.currentStreak is number && data.currentStreak >= 0)) &&
+             (!('longestStreak' in data) || (data.longestStreak is number && data.longestStreak >= 0));
+    }
+
+    function isValidTask(data) {
+      return data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 256 &&
+             data.status in ['todo', 'in_progress', 'completed', 'archived'] &&
+             data.priority in ['urgent', 'high', 'medium', 'low'] &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 2048)) &&
+             (!('category' in data) || (data.category is string && data.category.size() <= 64)) &&
+             (!('trackSlug' in data) || (data.trackSlug is string && data.trackSlug.size() <= 64)) &&
+             (!('estimatedMinutes' in data) || (data.estimatedMinutes is number && data.estimatedMinutes >= 0 && data.estimatedMinutes <= 1440)) &&
+             (!('actualMinutes' in data) || (data.actualMinutes is number && data.actualMinutes >= 0 && data.actualMinutes <= 1440)) &&
+             (!('dueDate' in data) || (data.dueDate is string && data.dueDate.size() <= 32));
+    }
+
+    function isValidStudySession(data) {
+      return data.userId == request.auth.uid &&
+             data.durationSeconds is number && data.durationSeconds >= 0 && data.durationSeconds <= 86400 &&
+             data.category is string && data.category.size() <= 64 &&
+             (!('taskTitle' in data) || (data.taskTitle is string && data.taskTitle.size() <= 256)) &&
+             (!('deviceName' in data) || (data.deviceName is string && data.deviceName.size() <= 128));
+    }
+
+    function isValidReviewCard(data) {
+      return data.userId == request.auth.uid &&
+             data.questionId is string && data.questionId.size() <= 128 &&
+             data.causeTag in ['concept_gap', 'careless_slip', 'misread', 'time_pressure', 'guess'] &&
+             (!('questionTitle' in data) || (data.questionTitle is string && data.questionTitle.size() <= 256)) &&
+             (!('intervalDays' in data) || (data.intervalDays is number && data.intervalDays >= 0)) &&
+             (!('easeFactor' in data) || (data.easeFactor is number && data.easeFactor >= 1.0)) &&
+             (!('lapses' in data) || (data.lapses is number && data.lapses >= 0));
+    }
+
+    function isValidPracticeAttempt(data) {
+      return data.userId == request.auth.uid &&
+             data.questionId is string && data.questionId.size() <= 128 &&
+             data.verdict in ['accepted', 'wrong_answer', 'syntax_error', 'timeout'] &&
+             (!('score' in data) || (data.score is number && data.score >= 0 && data.score <= 100)) &&
+             (!('timeSpentSeconds' in data) || (data.timeSpentSeconds is number && data.timeSpentSeconds >= 0));
+    }
+
+    function isValidActiveDevice(data) {
+      return data.userId == request.auth.uid &&
+             data.deviceId is string && data.deviceId.size() <= 128 &&
+             data.deviceName is string && data.deviceName.size() <= 128 &&
+             data.deviceType in ['desktop', 'tablet', 'mobile', 'web'] &&
+             (!('ipHint' in data) || (data.ipHint is string && data.ipHint.size() <= 64));
+    }
+
+    // User profiles collection
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Users cannot list other users
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isOwner(userId);
+    }
+
+    // Tasks collection: Synced across devices in real time
+    match /tasks/{taskId} {
+      allow get: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(taskId) && isValidTask(incoming());
+      allow update: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid &&
+                      isValidTask(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(taskId) && existing().userId == request.auth.uid;
+    }
+
+    // Study focus sessions collection
+    match /study_sessions/{sessionId} {
+      allow get: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(sessionId) && isValidStudySession(incoming());
+      allow update: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid &&
+                      isValidStudySession(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(sessionId) && existing().userId == request.auth.uid;
+    }
+
+    // Spaced repetition mistake review cards
+    match /review_cards/{cardId} {
+      allow get: if isSignedIn() && isValidId(cardId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(cardId) && isValidReviewCard(incoming());
+      allow update: if isSignedIn() && isValidId(cardId) && existing().userId == request.auth.uid &&
+                      isValidReviewCard(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(cardId) && existing().userId == request.auth.uid;
+    }
+
+    // Practice problem submissions & attempts
+    match /practice_attempts/{attemptId} {
+      allow get: if isSignedIn() && isValidId(attemptId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(attemptId) && isValidPracticeAttempt(incoming());
+      allow update: if isSignedIn() && isValidId(attemptId) && existing().userId == request.auth.uid &&
+                      isValidPracticeAttempt(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(attemptId) && existing().userId == request.auth.uid;
+    }
+
+    // Active devices registry for live multi-device presence & synchronization
+    match /active_devices/{deviceId} {
+      allow get: if isSignedIn() && isValidId(deviceId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(deviceId) && isValidActiveDevice(incoming());
+      allow update: if isSignedIn() && isValidId(deviceId) && existing().userId == request.auth.uid &&
+                      isValidActiveDevice(incoming()) && incoming().userId == existing().userId;
+      allow delete: if isSignedIn() && isValidId(deviceId) && existing().userId == request.auth.uid;
+    }
+  }
+}

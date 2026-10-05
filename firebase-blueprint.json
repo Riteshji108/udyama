@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account settings, streak, and career goal profile",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "photoURL": { "type": "string", "maxLength": 512 },
+        "targetRole": { "type": "string", "maxLength": 64 },
+        "weeklyHoursGoal": { "type": "number" },
+        "currentStreak": { "type": "number" },
+        "longestStreak": { "type": "number" },
+        "lastActiveDate": { "type": "string", "maxLength": 32 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Productivity task synced across all user devices",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "description": { "type": "string", "maxLength": 2048 },
+        "status": { "type": "string", "enum": ["todo", "in_progress", "completed", "archived"] },
+        "priority": { "type": "string", "enum": ["urgent", "high", "medium", "low"] },
+        "category": { "type": "string", "maxLength": 64 },
+        "trackSlug": { "type": "string", "maxLength": 64 },
+        "estimatedMinutes": { "type": "number" },
+        "actualMinutes": { "type": "number" },
+        "dueDate": { "type": "string", "maxLength": 32 },
+        "completedAt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "status", "priority"]
+    },
+    "StudySession": {
+      "title": "Study Session",
+      "description": "Logged focus time or learning timer session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "durationSeconds": { "type": "number" },
+        "category": { "type": "string", "maxLength": 64 },
+        "taskTitle": { "type": "string", "maxLength": 256 },
+        "deviceName": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "durationSeconds", "category"]
+    },
+    "ReviewCard": {
+      "title": "Review Card",
+      "description": "Spaced repetition mistake card for practice items",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "questionId": { "type": "string", "maxLength": 128 },
+        "questionTitle": { "type": "string", "maxLength": 256 },
+        "causeTag": { "type": "string", "enum": ["concept_gap", "careless_slip", "misread", "time_pressure", "guess"] },
+        "skillSlug": { "type": "string", "maxLength": 64 },
+        "intervalDays": { "type": "number" },
+        "easeFactor": { "type": "number" },
+        "lapses": { "type": "number" },
+        "dueAt": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionId", "causeTag"]
+    },
+    "PracticeAttempt": {
+      "title": "Practice Attempt",
+      "description": "Recorded answer attempt on a coding or assessment problem",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "questionId": { "type": "string", "maxLength": 128 },
+        "verdict": { "type": "string", "enum": ["accepted", "wrong_answer", "syntax_error", "timeout"] },
+        "score": { "type": "number" },
+        "timeSpentSeconds": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "questionId", "verdict"]
+    },
+    "ActiveDevice": {
+      "title": "Active Device",
+      "description": "Device registration for cross-device presence and multi-screen sync",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "deviceId": { "type": "string", "maxLength": 128 },
+        "deviceName": { "type": "string", "maxLength": 128 },
+        "deviceType": { "type": "string", "enum": ["desktop", "tablet", "mobile", "web"] },
+        "lastSeenAt": { "type": "string" },
+        "ipHint": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId", "deviceId", "deviceName", "deviceType"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile with learning goals and streak statistics"
+    },
+    "/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Productivity task synced in real time across all user devices"
+    },
+    "/study_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/StudySession" },
+      "description": "Recorded focus timer and study session logs"
+    },
+    "/review_cards/{cardId}": {
+      "schema": { "$ref": "#/entities/ReviewCard" },
+      "description": "Spaced repetition review items scheduled for mistake retention"
+    },
+    "/practice_attempts/{attemptId}": {
+      "schema": { "$ref": "#/entities/PracticeAttempt" },
+      "description": "Submissions and performance records for practice challenges"
+    },
+    "/active_devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/ActiveDevice" },
+      "description": "Connected device heartbeat registry for active multi-device sync"
+    }
+  }
+}

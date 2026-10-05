@@ -1,0 +1,6 @@
+{
+  "name": "Udyama - Productivity & Career Roadmap OS",
+  "description": "A focused productivity and learning platform that syncs daily tasks, study roadmaps, practice challenges, and skill mastery seamlessly across all your devices.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
