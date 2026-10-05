@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" role="img" aria-labelledby="title desc">
+  <title id="title">Udyama — upward surge animation</title>
+  <desc id="desc">A luminous flame-like surge rises continuously, symbolizing the upward surge of awareness.</desc>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="72%" r="75%">
+      <stop offset="0%" stop-color="#17192f"/>
+      <stop offset="62%" stop-color="#0b1024"/>
+      <stop offset="100%" stop-color="#050813"/>
+    </radialGradient>
+    <linearGradient id="flame" x1="0" x2="0" y1="1" y2="0">
+      <stop offset="0%" stop-color="#fff2b8"/>
+      <stop offset="35%" stop-color="#ffcf67"/>
+      <stop offset="72%" stop-color="#ff8c42"/>
+      <stop offset="100%" stop-color="#d94b3d" stop-opacity="0.05"/>
+    </linearGradient>
+    <linearGradient id="halo" x1="0" x2="0" y1="1" y2="0">
+      <stop offset="0%" stop-color="#ffcc68" stop-opacity="0.30"/>
+      <stop offset="100%" stop-color="#ff7f50" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="13" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="800" height="420" rx="26" fill="url(#bg)"/>
+
+  <ellipse cx="400" cy="325" rx="150" ry="54" fill="url(#halo)" filter="url(#glow)">
+    <animate attributeName="rx" values="140;170;140" dur="2.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.45;0.85;0.45" dur="2.8s" repeatCount="indefinite"/>
+  </ellipse>
+
+  <g filter="url(#glow)">
+    <path d="M400 342 C346 314 374 260 399 229 C425 197 420 160 406 125 C469 173 474 226 447 260 C429 283 432 305 400 342 Z" fill="url(#flame)">
+      <animateTransform attributeName="transform" type="translate" values="0 16;0 -5;0 16" dur="2.2s" repeatCount="indefinite"/>
+    </path>
+    <path d="M400 337 C383 316 394 287 411 263 C427 241 429 219 420 198 C451 229 455 260 439 280 C426 296 424 315 400 337 Z" fill="#fff7d6">
+      <animateTransform attributeName="transform" type="translate" values="0 12;0 -7;0 12" dur="1.65s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <g fill="#ffd98b">
+    <circle cx="352" cy="278" r="3">
+      <animate attributeName="cy" values="278;80;278" dur="2.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="456" cy="300" r="2.5">
+      <animate attributeName="cy" values="300;120;300" dur="2.25s" begin="0.6s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="2.25s" begin="0.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="438" cy="246" r="2">
+      <animate attributeName="cy" values="246;60;246" dur="1.9s" begin="0.25s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="1.9s" begin="0.25s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <text x="400" y="56" text-anchor="middle" fill="#f1e7cf" font-family="Georgia,serif" font-size="25" letter-spacing="6">UDYAMA · THE UPSURGE</text>
+  <text x="400" y="382" text-anchor="middle" fill="#b9b39f" font-family="Arial,sans-serif" font-size="15" letter-spacing="2">AWARENESS RISING INTO BHAVA</text>
+</svg>
