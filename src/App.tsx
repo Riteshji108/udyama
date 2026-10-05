@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, testConnection, loginWithGoogle, logoutUser } from './lib/firebase';
 import { Task, TaskStatus, TaskPriority, TaskCategory, ActiveDevice, ReviewCard } from './types';
@@ -18,6 +18,8 @@ import {
   subscribeToActiveDevices,
 } from './services/deviceService';
 import { subscribeToReviewCards } from './services/reviewService';
+
+// Core UI Components
 import { TaskItem } from './components/TaskItem';
 import { TaskForm } from './components/TaskForm';
 import { FocusTimer } from './components/FocusTimer';
@@ -27,6 +29,15 @@ import { ReviewQueue } from './components/ReviewQueue';
 import { RoadmapView } from './components/RoadmapView';
 import { MockTestView } from './components/MockTestView';
 import { CommandPalette } from './components/CommandPalette';
+import { StreakActivity } from './components/StreakActivity';
+import { QuickFactFeed } from './components/QuickFactFeed';
+import { AIInterviewSimulator } from './components/AIInterviewSimulator';
+import { AITutorChat } from './components/AITutorChat';
+import { ResourcesAndVideos } from './components/ResourcesAndVideos';
+import { BlogAndNews } from './components/BlogAndNews';
+import { PersonalizationModal, UserPersonalization } from './components/PersonalizationModal';
+
+// Icons
 import {
   IconSync,
   IconCheck,
@@ -40,7 +51,23 @@ import {
   IconCloudCheck,
   IconUser,
   IconDeviceLaptop,
+  IconMessageSquare,
+  IconVideo,
+  IconBookOpen,
+  IconSliders,
+  IconSparkles,
 } from './components/icons';
+
+type ActiveTab =
+  | 'dashboard'
+  | 'tasks'
+  | 'roadmaps'
+  | 'practice'
+  | 'mock_tests'
+  | 'interview'
+  | 'resources'
+  | 'blog_news'
+  | 'devices';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -52,20 +79,31 @@ export default function App() {
   const [devices, setDevices] = useState<ActiveDevice[]>([]);
   const [reviewCards, setReviewCards] = useState<ReviewCard[]>([]);
 
-  // UI State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tasks' | 'roadmaps' | 'practice' | 'mock_tests' | 'devices'>('dashboard');
+  // Navigation & UI State
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [taskFilter, setTaskFilter] = useState<'all' | 'todo' | 'completed' | 'urgent'>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [activeTimerTask, setActiveTimerTask] = useState<Task | null>(null);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [currentTrackSlug, setCurrentTrackSlug] = useState('data-analyst');
+  const [isAITutorOpen, setIsAITutorOpen] = useState(false);
+  const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
 
-  // Stats
+  // Personalization settings
+  const [personalization, setPersonalization] = useState<UserPersonalization>({
+    targetRole: 'Data Analyst',
+    experienceLevel: 'Intermediate',
+    weeklyHours: 10,
+    dailyMinutes: 45,
+    restDay: 'Sunday',
+    focusTrack: 'data-analyst',
+  });
+
+  // Study metrics
   const [todayStudyMinutes, setTodayStudyMinutes] = useState(45);
-  const [weekStudyHours, setWeekStudyHours] = useState(8.5);
-  const [streakDays, setStreakDays] = useState(7);
-  const [syncStatusText, setSyncStatusText] = useState('Synced with Cloud');
+  const [weekStudyHours, setWeekStudyHours] = useState(9.2);
+  const [currentStreak, setCurrentStreak] = useState(8);
+  const [longestStreak, setLongestStreak] = useState(24);
 
   const currentDeviceId = getOrCreateDeviceId();
 
@@ -88,13 +126,10 @@ export default function App() {
   // Real-time synchronization when user is authenticated
   useEffect(() => {
     if (currentUser) {
-      // 1. Register device presence heartbeat
       registerDeviceHeartbeat(currentUser.uid);
 
-      // 2. Real-time tasks subscription via onSnapshot
       const unsubTasks = subscribeToUserTasks(currentUser.uid, (syncedTasks) => {
         if (syncedTasks.length === 0) {
-          // If brand-new user with no tasks, seed default career tasks
           const initialTasks = initializeDefaultTasks(currentUser.uid);
           syncLocalTasksToCloud(currentUser.uid, initialTasks).then(() => {
             setTasks(initialTasks);
@@ -102,15 +137,12 @@ export default function App() {
         } else {
           setTasks(syncedTasks);
         }
-        setSyncStatusText('Synced live across devices');
       });
 
-      // 3. Real-time active devices subscription
       const unsubDevices = subscribeToActiveDevices(currentUser.uid, (deviceList) => {
         setDevices(deviceList);
       });
 
-      // 4. Real-time review queue subscription
       const unsubReviews = subscribeToReviewCards(currentUser.uid, (cards) => {
         setReviewCards(cards);
       });
@@ -121,7 +153,6 @@ export default function App() {
         unsubReviews?.();
       };
     } else {
-      // Local fallback mode for guest users
       const local = getLocalTasks();
       if (local.length === 0) {
         const seeded = initializeDefaultTasks('guest-device-user');
@@ -156,7 +187,6 @@ export default function App() {
     const nextStatus: TaskStatus = task.status === 'completed' ? 'todo' : 'completed';
     const now = new Date().toISOString();
 
-    // Optimistic UI update
     setTasks((prev) =>
       prev.map((t) =>
         t.id === task.id
@@ -216,7 +246,6 @@ export default function App() {
         ...data,
         status: 'todo',
       });
-      // Will also be picked up by onSnapshot
       setTasks((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
     } else {
       const now = new Date().toISOString();
@@ -249,7 +278,6 @@ export default function App() {
     try {
       const user = await loginWithGoogle();
       if (user) {
-        // Migrate any local tasks to user's Firestore database
         const local = getLocalTasks();
         if (local.length > 0) {
           await syncLocalTasksToCloud(user.uid, local);
@@ -285,10 +313,10 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F2F3F1] text-[#253238] flex flex-col antialiased selection:bg-[#2E5B66] selection:text-white">
-      {/* Top Navigation Header */}
+      {/* Top Header */}
       <header className="sticky top-0 z-40 bg-[#E7E9E6]/95 backdrop-blur-xs border-b border-[#C8CECB] px-4 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo & Platform Name */}
+          {/* Logo */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab('dashboard')}
@@ -302,35 +330,58 @@ export default function App() {
                   UDYAMA
                 </span>
                 <span className="hidden sm:inline-block text-[10px] text-[#5D676C] ml-2 font-mono uppercase tracking-widest border-l border-[#C8CECB] pl-2">
-                  Multi-Device Productivity OS
+                  Learning & Productivity OS
                 </span>
               </div>
             </button>
           </div>
 
-          {/* Quick Search & Command Palette trigger */}
+          {/* Quick Actions & Search */}
           <div className="flex items-center gap-2">
+            {/* Command Palette Trigger */}
             <button
               onClick={() => setIsCommandPaletteOpen(true)}
               className="flex items-center gap-2 bg-[#F2F3F1] border border-[#C8CECB] hover:border-[#2E5B66]/50 rounded px-2.5 py-1 text-xs text-[#5D676C] cursor-pointer"
             >
               <IconSearch size={14} />
-              <span className="hidden md:inline">Search or jump...</span>
+              <span className="hidden md:inline">Search...</span>
               <kbd className="hidden md:inline-block text-[10px] font-mono bg-[#E7E9E6] border border-[#C8CECB] px-1 rounded">
                 ⌘K
               </kbd>
             </button>
 
-            {/* Sync Badge */}
+            {/* AI Tutor Chat Trigger Button */}
+            <button
+              onClick={() => setIsAITutorOpen(!isAITutorOpen)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border cursor-pointer transition-colors ${
+                isAITutorOpen
+                  ? 'bg-[#2E5B66] text-white border-[#2E5B66]'
+                  : 'bg-[#F2F3F1] border-[#C8CECB] text-[#253238] hover:bg-[#DDE1DE]'
+              }`}
+            >
+              <IconSparkles size={13} className={isAITutorOpen ? 'text-white' : 'text-[#2E5B66]'} />
+              <span className="hidden sm:inline">AI Tutor</span>
+            </button>
+
+            {/* Personalization Settings Button */}
+            <button
+              onClick={() => setIsPersonalizationOpen(true)}
+              title="Personalization & Study Goals"
+              className="p-1.5 rounded bg-[#F2F3F1] border border-[#C8CECB] hover:bg-[#DDE1DE] text-[#5D676C] cursor-pointer"
+            >
+              <IconSliders size={14} />
+            </button>
+
+            {/* Cloud Sync Status Pill */}
             <button
               onClick={() => setActiveTab('devices')}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#E7E9E6] border border-[#C8CECB] hover:bg-[#DDE1DE] text-xs cursor-pointer"
               title="Click to view connected devices"
             >
-              <div className="w-2 h-2 rounded-full bg-[#3E6A50]" />
+              <div className="w-2 h-2 rounded-full bg-[#3E6A50] animate-pulse" />
               <IconCloudCheck size={14} className="text-[#3E6A50]" />
               <span className="hidden lg:inline text-[11px] font-medium text-[#253238]">
-                {currentUser ? 'Cloud Synced' : 'Local Storage'}
+                {currentUser ? 'Cloud Synced' : 'Local Mode'}
               </span>
               {devices.length > 1 && (
                 <span className="text-[10px] bg-[#2E5B66] text-white px-1.5 rounded-full font-mono">
@@ -339,7 +390,7 @@ export default function App() {
               )}
             </button>
 
-            {/* Google Auth / Profile */}
+            {/* Google Auth Profile */}
             {currentUser ? (
               <div className="flex items-center gap-2 pl-2 border-l border-[#C8CECB]">
                 {currentUser.photoURL ? (
@@ -374,7 +425,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Layout Body */}
+      {/* Main Container */}
       <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col md:flex-row px-4 py-4 gap-6">
         {/* Left Rail Desktop Navigation (Section 42) */}
         <aside className="hidden md:flex flex-col w-56 shrink-0 space-y-4">
@@ -383,8 +434,11 @@ export default function App() {
               { id: 'dashboard', label: 'Dashboard', icon: IconLayers },
               { id: 'tasks', label: 'Tasks & Sync', icon: IconCheck, count: todoTasks.length },
               { id: 'roadmaps', label: 'Career Roadmaps', icon: IconLayers },
+              { id: 'interview', label: 'AI Mock Interview', icon: IconVideo },
               { id: 'practice', label: 'SQL & Practice Lab', icon: IconCode },
-              { id: 'mock_tests', label: 'Mock Tests & Exam', icon: IconAward },
+              { id: 'mock_tests', label: 'Mock Test Simulator', icon: IconAward },
+              { id: 'resources', label: 'Videos & Resources', icon: IconVideo },
+              { id: 'blog_news', label: 'Articles & News', icon: IconBookOpen },
               { id: 'devices', label: 'Connected Devices', icon: IconDeviceLaptop, count: devices.length },
             ].map((item) => {
               const IconComp = item.icon;
@@ -392,7 +446,7 @@ export default function App() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id as any)}
+                  onClick={() => setActiveTab(item.id as ActiveTab)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded text-xs font-medium transition-colors cursor-pointer ${
                     isActive
                       ? 'bg-[#2E5B66] text-white'
@@ -417,40 +471,76 @@ export default function App() {
             })}
           </nav>
 
-          {/* Quick Focus Timer in Left Rail */}
+          {/* Focus Timer */}
           <FocusTimer
             userId={currentUser?.uid}
             activeTask={activeTimerTask}
             onSessionLogged={handleSessionLogged}
           />
 
-          {/* Spaced Review Queue Widget in Left Rail */}
+          {/* Spaced Review Queue Widget */}
           <ReviewQueue cards={reviewCards} />
         </aside>
 
-        {/* Main Content Area */}
+        {/* Center Main Stage */}
         <main className="flex-1 min-w-0 space-y-4 pb-20 md:pb-4">
+          {/* AI Tutor Chat Drawer if Open */}
+          {isAITutorOpen && (
+            <div className="mb-4">
+              <AITutorChat
+                onClose={() => setIsAITutorOpen(false)}
+                targetRole={personalization.targetRole}
+                trackSlug={personalization.focusTrack}
+                onAddTask={(title, category) => {
+                  handleCreateTask({
+                    title,
+                    priority: 'high',
+                    category: category || 'roadmap_study',
+                    estimatedMinutes: 30,
+                  });
+                }}
+              />
+            </div>
+          )}
+
+          {/* Personalization Settings Modal if Open */}
+          {isPersonalizationOpen && (
+            <div className="mb-4">
+              <PersonalizationModal
+                currentSettings={personalization}
+                onSave={(newSettings) => setPersonalization(newSettings)}
+                onClose={() => setIsPersonalizationOpen(false)}
+              />
+            </div>
+          )}
+
           {/* ============================================================ */}
           {/* TAB: DASHBOARD */}
           {/* ============================================================ */}
           {activeTab === 'dashboard' && (
             <div className="space-y-4">
-              {/* Header Context Strip (Section 41) */}
+              {/* Context Strip & Profile Header (Section 41) */}
               <div className="bg-[#E7E9E6] border border-[#C8CECB] rounded-md p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#C8CECB] pb-3">
                   <div>
                     <span className="text-[10px] uppercase font-semibold tracking-wider text-[#5D676C]">
-                      Personal Learning & Productivity OS
+                      Personal Learning Operating System (Section 41)
                     </span>
                     <h1 className="text-xl font-serif font-bold text-[#253238]">
-                      Welcome back, {currentUser?.displayName || 'Learner'}
+                      Welcome, {currentUser?.displayName || 'Learner'}
                     </h1>
                     <p className="text-xs text-[#5D676C] mt-0.5">
-                      Career Target: <span className="text-[#2E5B66] font-semibold">Data Analyst / Analytics Engineering</span> • All devices synchronized
+                      Target Role: <strong className="text-[#2E5B66]">{personalization.targetRole}</strong> ({personalization.experienceLevel}) • Goal: {personalization.weeklyHours}h/wk
                     </p>
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setIsPersonalizationOpen(true)}
+                      className="px-3 py-1.5 border border-[#C8CECB] bg-[#F2F3F1] hover:bg-[#DDE1DE] text-[#253238] text-xs font-medium rounded flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <IconSliders size={13} /> Customize Goals
+                    </button>
                     <button
                       onClick={() => setShowTaskForm(true)}
                       className="px-3 py-1.5 bg-[#2E5B66] hover:bg-[#244851] text-white text-xs font-semibold rounded flex items-center gap-1.5 cursor-pointer"
@@ -460,7 +550,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Metrics Bar (Section 41: Day, Week, Month, Streak) */}
+                {/* Metrics bar */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3">
                   <div className="bg-[#F2F3F1] border border-[#C8CECB] rounded p-2.5 text-center">
                     <span className="text-[11px] text-[#5D676C] uppercase font-semibold">
@@ -485,13 +575,13 @@ export default function App() {
                       <IconFlame size={13} className="text-[#9A6A1F]" /> Active Streak
                     </span>
                     <div className="text-xl font-mono font-bold text-[#9A6A1F] tabular-nums mt-0.5">
-                      {streakDays} Days
+                      {currentStreak} Days
                     </div>
                   </div>
 
                   <div className="bg-[#F2F3F1] border border-[#C8CECB] rounded p-2.5 text-center">
                     <span className="text-[11px] text-[#5D676C] uppercase font-semibold">
-                      Task Completion
+                      Tasks Completed
                     </span>
                     <div className="text-xl font-mono font-bold text-[#3E6A50] tabular-nums mt-0.5">
                       {tasks.length > 0
@@ -502,12 +592,24 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Daily Streak Activity & Weekly Consistency */}
+              <StreakActivity
+                currentStreak={currentStreak}
+                longestStreak={longestStreak}
+                todayMinutes={todayStudyMinutes}
+                weeklyTargetDays={5}
+                restDay={personalization.restDay}
+                onUpdateRestDay={(day) =>
+                  setPersonalization((prev) => ({ ...prev, restDay: day }))
+                }
+              />
+
               {/* Today: One Prioritized Task Card (Section 41) */}
               {priorityTask && (
                 <div className="bg-[#FDF6E8] border border-[#ECD9AE] rounded-md p-4">
                   <div className="flex items-center justify-between border-b border-[#ECD9AE] pb-2 mb-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-[#9A6A1F] flex items-center gap-1.5">
-                      <IconCheck size={14} /> Today: Priority Execution Target
+                      <IconCheck size={14} /> Today: One Prioritized Task
                     </span>
                     <span className="text-[10px] font-mono uppercase bg-white/70 px-1.5 py-0.2 rounded border border-[#ECD9AE] text-[#9A6A1F]">
                       {priorityTask.priority}
@@ -555,7 +657,19 @@ export default function App() {
                 </div>
               )}
 
-              {/* Inline Task Form Modal / Section */}
+              {/* Insta-style Quick Fact Reel */}
+              <QuickFactFeed
+                onSaveToReview={(fact) => {
+                  handleCreateTask({
+                    title: `Review Flashcard: ${fact.slice(0, 45)}...`,
+                    category: 'revision',
+                    priority: 'medium',
+                    estimatedMinutes: 10,
+                  });
+                }}
+              />
+
+              {/* Inline Task Form if toggled */}
               {showTaskForm && (
                 <TaskForm
                   onAddTask={handleCreateTask}
@@ -578,7 +692,7 @@ export default function App() {
                 </div>
 
                 <div className="space-y-2">
-                  {todoTasks.slice(0, 5).map((task) => (
+                  {todoTasks.slice(0, 4).map((task) => (
                     <TaskItem
                       key={task.id}
                       task={task}
@@ -595,29 +709,29 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Next Mock Test & Recently Viewed Strip (Section 41) */}
+              {/* Feature Cards Grid: AI Mock Interview & Practice Lab */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-[#E7E9E6] border border-[#C8CECB] rounded-md p-4 space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[#5D676C] flex items-center gap-1.5">
-                    <IconAward size={15} className="text-[#2E5B66]" /> Next Mock Test
+                    <IconVideo size={15} className="text-[#2E5B66]" /> AI Mock Interview
                   </span>
                   <h4 className="text-sm font-semibold text-[#253238] font-display">
-                    Full Sectional Mock #01: Statistics & Window SQL
+                    Adaptive Case & Technical Interview
                   </h4>
                   <p className="text-xs text-[#5D676C]">
-                    15-minute simulated checkpoint test with adaptive difficulty and instant grading report.
+                    Speech-enabled response capture and Gemini evaluation across clarity, technical depth, and executive communication.
                   </p>
                   <button
-                    onClick={() => setActiveTab('mock_tests')}
+                    onClick={() => setActiveTab('interview')}
                     className="mt-2 px-3 py-1.5 bg-[#2E5B66] hover:bg-[#244851] text-white text-xs font-medium rounded cursor-pointer"
                   >
-                    Open Mock Test Simulator
+                    Launch Mock Interview
                   </button>
                 </div>
 
                 <div className="bg-[#E7E9E6] border border-[#C8CECB] rounded-md p-4 space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[#5D676C] flex items-center gap-1.5">
-                    <IconCode size={15} className="text-[#2E5B66]" /> SQL & Practice Lab
+                    <IconCode size={15} className="text-[#687554]" /> SQL & Practice Lab
                   </span>
                   <h4 className="text-sm font-semibold text-[#253238] font-display">
                     Cohort Retention Rate Query Lab
@@ -660,7 +774,6 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Task Creation Form */}
               {showTaskForm && (
                 <TaskForm
                   onAddTask={handleCreateTask}
@@ -668,7 +781,7 @@ export default function App() {
                 />
               )}
 
-              {/* Filters Strip */}
+              {/* Filters */}
               <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
                 <div className="flex items-center gap-1">
                   {[
@@ -734,10 +847,19 @@ export default function App() {
           {/* ============================================================ */}
           {activeTab === 'roadmaps' && (
             <RoadmapView
-              currentTrackSlug={currentTrackSlug}
-              onSelectTrack={(slug) => setCurrentTrackSlug(slug)}
+              currentTrackSlug={personalization.focusTrack}
+              onSelectTrack={(slug) =>
+                setPersonalization((prev) => ({ ...prev, focusTrack: slug }))
+              }
               onAddTaskFromRoadmap={handleAddTaskFromRoadmap}
             />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: AI MOCK INTERVIEW */}
+          {/* ============================================================ */}
+          {activeTab === 'interview' && (
+            <AIInterviewSimulator targetRole={personalization.targetRole} />
           )}
 
           {/* ============================================================ */}
@@ -746,7 +868,7 @@ export default function App() {
           {activeTab === 'practice' && (
             <PracticeLab
               userId={currentUser?.uid}
-              onQuestionCompleted={(q, passed) => {
+              onQuestionCompleted={(_q, passed) => {
                 if (passed) {
                   setTodayStudyMinutes((m) => m + 15);
                 }
@@ -758,6 +880,38 @@ export default function App() {
           {/* TAB: MOCK TESTS */}
           {/* ============================================================ */}
           {activeTab === 'mock_tests' && <MockTestView />}
+
+          {/* ============================================================ */}
+          {/* TAB: VIDEOS & RESOURCES */}
+          {/* ============================================================ */}
+          {activeTab === 'resources' && (
+            <ResourcesAndVideos
+              onAddTask={(title, duration) => {
+                handleCreateTask({
+                  title,
+                  category: 'roadmap_study',
+                  priority: 'medium',
+                  estimatedMinutes: duration,
+                });
+              }}
+            />
+          )}
+
+          {/* ============================================================ */}
+          {/* TAB: ARTICLES & NEWS */}
+          {/* ============================================================ */}
+          {activeTab === 'blog_news' && (
+            <BlogAndNews
+              onAddTask={(title, mins) => {
+                handleCreateTask({
+                  title,
+                  category: 'roadmap_study',
+                  priority: 'low',
+                  estimatedMinutes: mins,
+                });
+              }}
+            />
+          )}
 
           {/* ============================================================ */}
           {/* TAB: CONNECTED DEVICES & SYNC */}
@@ -780,12 +934,12 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation (Section 42: Five labeled destinations) */}
+      {/* Mobile Bottom Navigation (Section 42: Labeled destinations) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#E7E9E6] border-t border-[#C8CECB] px-2 py-1.5 flex items-center justify-around">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: IconLayers },
           { id: 'tasks', label: 'Tasks', icon: IconCheck },
-          { id: 'roadmaps', label: 'Roadmaps', icon: IconLayers },
+          { id: 'interview', label: 'Interview', icon: IconVideo },
           { id: 'practice', label: 'Practice', icon: IconCode },
           { id: 'devices', label: 'Sync', icon: IconDeviceLaptop },
         ].map((tab) => {
@@ -794,7 +948,7 @@ export default function App() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as ActiveTab)}
               className={`flex flex-col items-center justify-center py-1 px-2 rounded cursor-pointer transition-colors ${
                 isActive ? 'text-[#2E5B66] font-semibold' : 'text-[#5D676C]'
               }`}
@@ -812,10 +966,10 @@ export default function App() {
         onClose={() => setIsCommandPaletteOpen(false)}
         tasks={tasks}
         onSelectTrack={(slug) => {
-          setCurrentTrackSlug(slug);
+          setPersonalization((prev) => ({ ...prev, focusTrack: slug }));
           setActiveTab('roadmaps');
         }}
-        onNavigateTab={(tab) => setActiveTab(tab as any)}
+        onNavigateTab={(tab) => setActiveTab(tab as ActiveTab)}
         onSelectTask={(task) => {
           setActiveTimerTask(task);
         }}
