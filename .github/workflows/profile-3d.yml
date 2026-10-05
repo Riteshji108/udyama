@@ -1,0 +1,35 @@
+name: Udyama Contribution Constellation
+
+on:
+  schedule:
+    - cron: "18 18 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    name: Generate 3D contribution artwork
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Generate 3D contribution calendar
+        uses: yoshi389111/github-profile-3d-contrib@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          USERNAME: ${{ github.repository_owner }}
+
+      - name: Commit generated artwork
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add -A profile-3d-contrib
+          if git diff --cached --quiet; then
+            echo "No contribution artwork changes."
+          else
+            git commit -m "chore: refresh contribution constellation"
+            git push
+          fi
